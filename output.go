@@ -140,7 +140,7 @@ func printOutput(
 	}
 
 	count := 0
-	err := callgraph.GraphVisitEdges(cg, func(edge *callgraph.Edge) error {
+	visitor := func(edge *callgraph.Edge) error {
 		count++
 
 		caller := edge.Caller
@@ -259,7 +259,14 @@ func printOutput(
 				label = fmt.Sprintf("%s\n%s", node.Func.Pkg.Pkg.Name(), label)
 			}
 
-			attrs["label"] = label
+			params_str := make([]string, len(node.Func.Params))
+			for i := 0; i < len(node.Func.Params); i++ {
+				params_str[i] = node.Func.Params[i].String()
+				params_str[i] = strings.Replace(params_str[i], "parameter ", "", 1)
+			}
+			params_string := fmt.Sprintf("(%s)", strings.Join(params_str, ","))
+
+			attrs["label"] = label + params_string
 
 			// func styles
 			if node.Func.Parent() != nil {
@@ -274,9 +281,9 @@ func printOutput(
 
 			// group by pkg
 			if groupPkg && !isFocused {
-				label := node.Func.Pkg.Pkg.Name()
+				label := node.Func.Pkg.Pkg.Name() + params_string
 				if pkg.Goroot {
-					label = node.Func.Pkg.Pkg.Path()
+					label = node.Func.Pkg.Pkg.Path() + params_string
 				}
 				key := node.Func.Pkg.Pkg.Path()
 				if _, ok := c.Clusters[key]; !ok {
@@ -284,7 +291,7 @@ func printOutput(
 						ID:       key,
 						Clusters: make(map[string]*dotCluster),
 						Attrs: dotAttrs{
-							"penwidth":  "0.8",
+							"penwidth":  "1.2",
 							"fontsize":  "16",
 							"label":     label,
 							"style":     "filled",
@@ -304,7 +311,7 @@ func printOutput(
 
 			// group by type
 			if groupType && sign.Recv() != nil {
-				label := strings.Split(node.Func.RelString(node.Func.Pkg.Pkg), ".")[0]
+				label := strings.Split(node.Func.RelString(node.Func.Pkg.Pkg), ".")[0] + params_string
 				key := sign.Recv().Type().String()
 				if _, ok := c.Clusters[key]; !ok {
 					c.Clusters[key] = &dotCluster{
@@ -403,10 +410,30 @@ func printOutput(
 		}
 
 		return nil
-	})
-	if err != nil {
-		return nil, err
 	}
+	callEdges := make([]*callgraph.Edge, 0)
+	for _, node := range cg.Nodes {
+		logf("%s\n", node.Func.Name())
+		if node.Func.Name() == "main" {
+			eds := callgraph.PathSearch(node, func(node *callgraph.Node) bool {
+				return node.Func.Name() == "Dynamic"
+			})
+			callEdges = append(callEdges, eds...)
+		}
+	}
+
+	for _, edge := range callEdges {
+		err := visitor(edge)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	//err := callgraph.GraphVisitEdges(cg, visitor)
+
+	//if err != nil {
+	//	return nil, err
+	//}
 
 	// get edges form edgeMap
 	for _, e := range edgeMap {

@@ -48,7 +48,7 @@ var (
 	callgraphAlgo = flag.String("algo", CallGraphTypePointer, fmt.Sprintf("The algorithm used to construct the call graph. Possible values inlcude: %q, %q, %q, %q",
 		CallGraphTypeStatic, CallGraphTypeCha, CallGraphTypeRta, CallGraphTypePointer))
 
-	debugFlag   = flag.Bool("debug", false, "Enable verbose log.")
+	debugFlag   = flag.Bool("debug", true, "Enable verbose log.")
 	versionFlag = flag.Bool("version", false, "Show version and exit.")
 )
 
@@ -130,19 +130,12 @@ func main() {
 		log.SetFlags(log.Lmicroseconds)
 	}
 
-	if flag.NArg() != 1 {
-		fmt.Fprint(os.Stderr, Usage)
-		flag.PrintDefaults()
-		os.Exit(2)
-	}
-
-	args := flag.Args()
 	tests := *testFlag
 	httpAddr := *httpFlag
 	urlAddr := parseHTTPAddr(httpAddr)
 
 	Analysis = new(analysis)
-	if err := Analysis.DoAnalysis(CallGraphType(*callgraphAlgo), "", tests, args); err != nil {
+	if err := Analysis.DoAnalysis(CallGraphTypeRta, "/Users/saz/go-callvis/examples", tests, []string{"./main"}); err != nil {
 		log.Fatal(err)
 	}
 
