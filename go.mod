@@ -1,8 +1,6 @@
 module github.com/ofabry/go-callvis
 
-go 1.22.0
-
-toolchain go1.23.1
+go 1.24.1
 
 require (
 	github.com/goccy/go-graphviz v0.1.2
